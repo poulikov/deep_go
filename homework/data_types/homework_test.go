@@ -3,20 +3,21 @@ package main
 import (
 	"math/bits"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 )
 
 // go test -v homework_test.go
 
-func ToLittleEndian[T uint16 | uint32 | uint64](number T) T {
-	switch v := any(number).(type) {
-	case uint16:
-		return T(bits.ReverseBytes16(v))
-	case uint32:
-		return T(bits.ReverseBytes32(v))
-	case uint64:
-		return T(bits.ReverseBytes64(v))
+func ToLittleEndian[T ~uint16 | ~uint32 | ~uint64](number T) T {
+	switch unsafe.Sizeof(number) {
+	case 2:
+		return T(bits.ReverseBytes16(uint16(number)))
+	case 4:
+		return T(bits.ReverseBytes32(uint32(number)))
+	case 8:
+		return T(bits.ReverseBytes64(uint64(number)))
 	}
 	panic("unreachable")
 }
