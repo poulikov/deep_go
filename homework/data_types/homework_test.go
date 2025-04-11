@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/bits"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,11 +9,19 @@ import (
 
 // go test -v homework_test.go
 
-func ToLittleEndian(number uint32) uint32 {
-	return 0 // need to implement
+func ToLittleEndian[T uint16 | uint32 | uint64](number T) T {
+	switch v := any(number).(type) {
+	case uint16:
+		return T(bits.ReverseBytes16(v))
+	case uint32:
+		return T(bits.ReverseBytes32(v))
+	case uint64:
+		return T(bits.ReverseBytes64(v))
+	}
+	panic("unreachable")
 }
 
-func TestСonversion(t *testing.T) {
+func TestConversion(t *testing.T) {
 	tests := map[string]struct {
 		number uint32
 		result uint32
