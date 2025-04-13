@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"testing"
 	"unsafe"
 
@@ -23,6 +24,17 @@ func ToLittleEndian[T ~uint16 | ~uint32 | ~uint64](number T) T {
 	}
 
 	return res
+}
+
+func ToLittleEndianInplace[T ~uint16 | ~uint32 | ~uint64](number T) T {
+	slices.Reverse(unsafe.Slice((*byte)(unsafe.Pointer(&number)), int(unsafe.Sizeof(number))))
+	/*
+		если без исплоьзования stdlib то цикл вместо slices.Reverse
+		for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
+			b[i], b[j] = b[j], b[i]
+		}
+	*/
+	return number
 }
 
 func TestConversion(t *testing.T) {
@@ -55,6 +67,10 @@ func TestConversion(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			result := ToLittleEndian(test.number)
+			assert.Equal(t, test.result, result)
+		})
+		t.Run(name+" inplace", func(t *testing.T) {
+			result := ToLittleEndianInplace(test.number)
 			assert.Equal(t, test.result, result)
 		})
 	}
@@ -94,6 +110,10 @@ func TestConversion64(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			result := ToLittleEndian(test.number)
+			assert.Equal(t, test.result, result)
+		})
+		t.Run(name+" inplace", func(t *testing.T) {
+			result := ToLittleEndianInplace(test.number)
 			assert.Equal(t, test.result, result)
 		})
 	}
