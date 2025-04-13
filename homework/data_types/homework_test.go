@@ -12,28 +12,20 @@ import (
 
 func ToLittleEndian[T ~uint16 | ~uint32 | ~uint64](number T) T {
 	var (
-		res  T
 		size = int(unsafe.Sizeof(number))
 		p    = unsafe.Pointer(&number)
-		p2   = unsafe.Pointer(&res)
 	)
 
 	for i := range size / 2 {
-		*(*byte)(unsafe.Add(p2, i)) = *(*byte)(unsafe.Add(p, size-1-i))
-		*(*byte)(unsafe.Add(p2, size-1-i)) = *(*byte)(unsafe.Add(p, i))
+		*(*byte)(unsafe.Add(p, i)), *(*byte)(unsafe.Add(p, size-1-i)) =
+			*(*byte)(unsafe.Add(p, size-1-i)), *(*byte)(unsafe.Add(p, i))
 	}
 
-	return res
+	return number
 }
 
-func ToLittleEndianInplace[T ~uint16 | ~uint32 | ~uint64](number T) T {
+func ToLittleEndianOneliner[T ~uint16 | ~uint32 | ~uint64](number T) T {
 	slices.Reverse(unsafe.Slice((*byte)(unsafe.Pointer(&number)), int(unsafe.Sizeof(number))))
-	/*
-		если без исплоьзования stdlib то цикл вместо slices.Reverse
-		for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
-			b[i], b[j] = b[j], b[i]
-		}
-	*/
 	return number
 }
 
@@ -70,7 +62,7 @@ func TestConversion(t *testing.T) {
 			assert.Equal(t, test.result, result)
 		})
 		t.Run(name+" inplace", func(t *testing.T) {
-			result := ToLittleEndianInplace(test.number)
+			result := ToLittleEndianOneliner(test.number)
 			assert.Equal(t, test.result, result)
 		})
 	}
@@ -113,7 +105,7 @@ func TestConversion64(t *testing.T) {
 			assert.Equal(t, test.result, result)
 		})
 		t.Run(name+" inplace", func(t *testing.T) {
-			result := ToLittleEndianInplace(test.number)
+			result := ToLittleEndianOneliner(test.number)
 			assert.Equal(t, test.result, result)
 		})
 	}
