@@ -1,18 +1,35 @@
 package main
 
 import (
+	"slices"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 )
 
 // go test -v homework_test.go
 
-func ToLittleEndian(number uint32) uint32 {
-	return 0 // need to implement
+func ToLittleEndian[T ~uint16 | ~uint32 | ~uint64](number T) T {
+	var (
+		size = int(unsafe.Sizeof(number))
+		p    = unsafe.Pointer(&number)
+	)
+
+	for i := range size / 2 {
+		*(*byte)(unsafe.Add(p, i)), *(*byte)(unsafe.Add(p, size-1-i)) =
+			*(*byte)(unsafe.Add(p, size-1-i)), *(*byte)(unsafe.Add(p, i))
+	}
+
+	return number
 }
 
-func TestСonversion(t *testing.T) {
+func ToLittleEndianOneliner[T ~uint16 | ~uint32 | ~uint64](number T) T {
+	slices.Reverse(unsafe.Slice((*byte)(unsafe.Pointer(&number)), int(unsafe.Sizeof(number))))
+	return number
+}
+
+func TestConversion(t *testing.T) {
 	tests := map[string]struct {
 		number uint32
 		result uint32
@@ -42,6 +59,53 @@ func TestСonversion(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			result := ToLittleEndian(test.number)
+			assert.Equal(t, test.result, result)
+		})
+		t.Run(name+" oneliner", func(t *testing.T) {
+			result := ToLittleEndianOneliner(test.number)
+			assert.Equal(t, test.result, result)
+		})
+	}
+}
+
+func TestConversion64(t *testing.T) {
+	tests := map[string]struct {
+		number uint64
+		result uint64
+	}{
+		"test case #1": {
+			number: 0x0000000000000000,
+			result: 0x0000000000000000,
+		},
+		"test case #2": {
+			number: 0xFFFFFFFFFFFFFFFF,
+			result: 0xFFFFFFFFFFFFFFFF,
+		},
+		"test case #3": {
+			number: 0x00FF00FF00FF00FF,
+			result: 0xFF00FF00FF00FF00,
+		},
+		"test case #4": {
+			number: 0x0000FFFF0000FFFF,
+			result: 0xFFFF0000FFFF0000,
+		},
+		"test case #5": {
+			number: 0x0102030401020304,
+			result: 0x0403020104030201,
+		},
+		"test case #6": {
+			number: 0x0102030405060708,
+			result: 0x0807060504030201,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			result := ToLittleEndian(test.number)
+			assert.Equal(t, test.result, result)
+		})
+		t.Run(name+" oneliner", func(t *testing.T) {
+			result := ToLittleEndianOneliner(test.number)
 			assert.Equal(t, test.result, result)
 		})
 	}
