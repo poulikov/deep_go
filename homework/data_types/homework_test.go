@@ -61,7 +61,7 @@ func TestConversion(t *testing.T) {
 			result := ToLittleEndian(test.number)
 			assert.Equal(t, test.result, result)
 		})
-		t.Run(name+" inplace", func(t *testing.T) {
+		t.Run(name+" oneliner", func(t *testing.T) {
 			result := ToLittleEndianOneliner(test.number)
 			assert.Equal(t, test.result, result)
 		})
@@ -104,7 +104,7 @@ func TestConversion64(t *testing.T) {
 			result := ToLittleEndian(test.number)
 			assert.Equal(t, test.result, result)
 		})
-		t.Run(name+" inplace", func(t *testing.T) {
+		t.Run(name+" oneliner", func(t *testing.T) {
 			result := ToLittleEndianOneliner(test.number)
 			assert.Equal(t, test.result, result)
 		})
