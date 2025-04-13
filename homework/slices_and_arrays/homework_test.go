@@ -10,51 +10,52 @@ import (
 // go test -v homework_test.go
 
 type CircularQueue[T ~int8 | ~int16 | ~int32 | ~int64 | ~int] struct {
-	values   []T
-	head     int
-	tail     int
-	count    int
-	capacity int
+	values []T
+	head   int
+	tail   int
+	count  int
 }
 
 func NewCircularQueue[T ~int8 | ~int16 | ~int32 | ~int64 | ~int](size int) *CircularQueue[T] {
 	return &CircularQueue[T]{
-		values:   make([]T, size),
-		capacity: size,
+		values: make([]T, size),
 	}
 }
 
 func (q *CircularQueue[T]) Push(value T) bool {
-	if q.count == q.capacity {
+	if q.Full() {
 		return false
 	}
+
 	q.values[q.tail] = value
-	q.tail = (q.tail + 1) % q.capacity
+	q.tail = (q.tail + 1) % cap(q.values)
 	q.count++
+
 	return true
 }
 
 func (q *CircularQueue[T]) Pop() bool {
-	if q.count == 0 {
+	if q.Empty() {
 		return false
 	}
-	q.head = (q.head + 1) % q.capacity
+	q.head = (q.head + 1) % cap(q.values)
 	q.count--
+
 	return true
 }
 
 func (q *CircularQueue[T]) Front() T {
-	if q.count == 0 {
+	if q.Empty() {
 		return -1
 	}
 	return q.values[q.head]
 }
 
 func (q *CircularQueue[T]) Back() T {
-	if q.count == 0 {
+	if q.Empty() {
 		return -1
 	}
-	return q.values[(q.tail-1+q.capacity)%q.capacity]
+	return q.values[(q.tail-1+cap(q.values))%cap(q.values)]
 }
 
 func (q *CircularQueue[T]) Empty() bool {
@@ -62,7 +63,7 @@ func (q *CircularQueue[T]) Empty() bool {
 }
 
 func (q *CircularQueue[T]) Full() bool {
-	return q.count == q.capacity
+	return q.count == cap(q.values)
 }
 
 func TestCircularQueue(t *testing.T) {
