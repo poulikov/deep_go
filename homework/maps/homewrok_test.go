@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"reflect"
 	"testing"
 
@@ -9,36 +10,142 @@ import (
 
 // go test -v homework_test.go
 
-type OrderedMap struct {
+type kvpair[K cmp.Ordered, V any] struct {
+	key   K
+	value V
+	left  *kvpair[K, V]
+	right *kvpair[K, V]
+}
+
+type OrderedMap[K cmp.Ordered, V any] struct {
 	// need to implement
+	root *kvpair[K, V]
+	size int
 }
 
-func NewOrderedMap() OrderedMap {
-	return OrderedMap{} // need to implement
+func NewOrderedMap[K cmp.Ordered, V any]() *OrderedMap[K, V] {
+	return &OrderedMap[K, V]{} // need to implement
 }
 
-func (m *OrderedMap) Insert(key, value int) {
-	// need to implement
+func (m *OrderedMap[K, V]) Insert(key K, value V) {
+	newPair := &kvpair[K, V]{key: key, value: value}
+
+	if m.root == nil {
+		m.root = newPair
+		m.size++
+		return
+	}
+
+	current := m.root
+	for current != nil {
+		switch {
+		case key == current.key:
+			current.value = value
+			return
+		case key < current.key:
+			if current.left == nil {
+				current.left = newPair
+				m.size++
+				return
+			}
+			current = current.left
+		case key > current.key:
+			if current.right == nil {
+				current.right = newPair
+				m.size++
+				return
+			}
+			current = current.right
+		}
+	}
 }
 
-func (m *OrderedMap) Erase(key int) {
-	// need to implement
+func (m *OrderedMap[K, V]) Erase(key K) {
+	var parent, current *kvpair[K, V]
+	current = m.root
+
+	for current != nil && current.key != key {
+		parent = current
+		if current.key > key {
+			current = current.left
+		} else {
+			current = current.right
+		}
+	}
+	if current == nil {
+		return
+	}
+	if parent == nil {
+		if current.key == key {
+			m.root = nil
+		}
+		return
+	}
+
+	switch {
+	case current.left == nil && current.right == nil:
+		if parent.key > current.key {
+			parent.left = nil
+		} else {
+			parent.right = nil
+		}
+	case current.left == nil:
+		*current = *current.right
+	case current.right == nil:
+		*current = *current.left
+	default:
+		pair := m.findMin(current.right)
+		m.Erase(pair.key)
+		current.value = pair.value
+		current.key = pair.key
+	}
+
+	m.size--
 }
 
-func (m *OrderedMap) Contains(key int) bool {
-	return false // need to implement
+func (m *OrderedMap[K, V]) findMin(pair *kvpair[K, V]) *kvpair[K, V] {
+	current := pair
+	for current.left != nil {
+		current = current.left
+	}
+	return current
 }
 
-func (m *OrderedMap) Size() int {
-	return 0 // need to implement
+func (m *OrderedMap[K, V]) Contains(key K) bool {
+	current := m.root
+
+	for current != nil {
+		switch {
+		case key == current.key:
+			return true
+		case key < current.key:
+			current = current.left
+		case key > current.key:
+			current = current.right
+		}
+	}
+
+	return false
 }
 
-func (m *OrderedMap) ForEach(action func(int, int)) {
-	// need to implement
+func (m *OrderedMap[K, V]) Size() int {
+	return m.size
+}
+
+func (m *OrderedMap[K, V]) ForEach(action func(K, V)) {
+	m.walk(m.root, action)
+}
+
+func (m *OrderedMap[K, V]) walk(pair *kvpair[K, V], f func(K, V)) {
+	if pair != nil {
+		m.walk(pair.left, f)
+		f(pair.key, pair.value)
+		m.walk(pair.right, f)
+	}
 }
 
 func TestCircularQueue(t *testing.T) {
-	data := NewOrderedMap()
+	data := NewOrderedMap[int, int]()
 	assert.Zero(t, data.Size())
 
 	data.Insert(10, 10)
