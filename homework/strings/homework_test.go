@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 	"unsafe"
+	"weak"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,46 +18,46 @@ type COWBuffer struct {
 	mx *sync.RWMutex
 }
 
-func NewCOWBuffer(data []byte) COWBuffer {
-	buf := COWBuffer{
+func NewCOWBuffer(data []byte) *COWBuffer {
+	buf := &COWBuffer{
 		data: data,
 		refs: new(int),
 		mx:   &sync.RWMutex{},
 	}
-	c := clean{
-		refs: buf.refs,
-		mx:   buf.mx,
-	}
-	runtime.AddCleanup(&buf, func(c clean) {
-		c.mx.Lock()
-		if *c.refs > 0 {
-			*c.refs--
+
+	ptr := weak.Make(buf)
+	runtime.AddCleanup(&buf, func(b weak.Pointer[COWBuffer]) {
+		bf := b.Value()
+		bf.mx.Lock()
+		if *bf.refs > 0 {
+			*bf.refs--
 		}
-		c.mx.Unlock()
-	}, c)
+		bf.mx.Unlock()
+	}, ptr)
+
 	return buf
 }
 
-func (b *COWBuffer) Clone() COWBuffer {
+func (b *COWBuffer) Clone() *COWBuffer {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 	*b.refs++
-	buf := COWBuffer{
+	buf := &COWBuffer{
 		data: b.data,
 		refs: b.refs,
 		mx:   b.mx,
 	}
-	c := clean{
-		refs: buf.refs,
-		mx:   buf.mx,
-	}
-	runtime.AddCleanup(&buf, func(c clean) {
-		c.mx.Lock()
-		if *c.refs > 0 {
-			*c.refs--
+
+	ptr := weak.Make(buf)
+	runtime.AddCleanup(&buf, func(b weak.Pointer[COWBuffer]) {
+		bf := b.Value()
+		bf.mx.Lock()
+		if *bf.refs > 0 {
+			*bf.refs--
 		}
-		c.mx.Unlock()
-	}, c)
+		bf.mx.Unlock()
+	}, ptr)
+
 	return buf
 }
 
@@ -91,17 +92,6 @@ func (b *COWBuffer) Update(index int, value byte) bool {
 		mx.Lock()
 		defer mx.Unlock()
 		b.mx = mx
-		c := clean{
-			refs: b.refs,
-			mx:   b.mx,
-		}
-		runtime.AddCleanup(&b, func(c clean) {
-			c.mx.Lock()
-			if *c.refs > 0 {
-				*c.refs--
-			}
-			c.mx.Unlock()
-		}, c)
 	}
 	b.data[index] = value
 	unlock()
@@ -116,11 +106,6 @@ func (b *COWBuffer) String() string {
 		return ""
 	}
 	return unsafe.String(unsafe.SliceData(b.data), len(b.data))
-}
-
-type clean struct {
-	refs *int
-	mx   *sync.RWMutex
 }
 
 func TestCOWBuffer(t *testing.T) {
