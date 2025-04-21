@@ -27,12 +27,7 @@ func NewCOWBuffer(data []byte) *COWBuffer {
 
 	ptr := weak.Make(buf)
 	runtime.AddCleanup(&buf, func(b weak.Pointer[COWBuffer]) {
-		bf := b.Value()
-		bf.mx.Lock()
-		if *bf.refs > 0 {
-			*bf.refs--
-		}
-		bf.mx.Unlock()
+		b.Value().Close()
 	}, ptr)
 
 	return buf
@@ -50,12 +45,7 @@ func (b *COWBuffer) Clone() *COWBuffer {
 
 	ptr := weak.Make(buf)
 	runtime.AddCleanup(&buf, func(b weak.Pointer[COWBuffer]) {
-		bf := b.Value()
-		bf.mx.Lock()
-		if *bf.refs > 0 {
-			*bf.refs--
-		}
-		bf.mx.Unlock()
+		b.Value().Close()
 	}, ptr)
 
 	return buf
@@ -63,6 +53,7 @@ func (b *COWBuffer) Clone() *COWBuffer {
 
 func (b *COWBuffer) Close() {
 	b.mx.Lock()
+	unlock := b.mx.Unlock
 	if *b.refs == 0 {
 		b.mx.Unlock()
 		return
@@ -70,8 +61,8 @@ func (b *COWBuffer) Close() {
 	*b.refs--
 	b.refs = new(int)
 	b.data = nil
-	defer b.mx.Unlock()
 	b.mx = &sync.RWMutex{}
+	unlock()
 }
 
 func (b *COWBuffer) Update(index int, value byte) bool {
