@@ -2,6 +2,8 @@ package main
 
 import (
 	"reflect"
+	"runtime"
+	"sync"
 	"testing"
 	"unsafe"
 
@@ -11,27 +13,114 @@ import (
 type COWBuffer struct {
 	data []byte
 	refs *int
-	// need to implement
+
+	mx *sync.RWMutex
 }
 
 func NewCOWBuffer(data []byte) COWBuffer {
-	return COWBuffer{} // need to implement
+	buf := COWBuffer{
+		data: data,
+		refs: new(int),
+		mx:   &sync.RWMutex{},
+	}
+	c := clean{
+		refs: buf.refs,
+		mx:   buf.mx,
+	}
+	runtime.AddCleanup(&buf, func(c clean) {
+		c.mx.Lock()
+		if *c.refs > 0 {
+			*c.refs--
+		}
+		c.mx.Unlock()
+	}, c)
+	return buf
 }
 
 func (b *COWBuffer) Clone() COWBuffer {
-	return COWBuffer{} // need to implement
+	b.mx.Lock()
+	defer b.mx.Unlock()
+	*b.refs++
+	buf := COWBuffer{
+		data: b.data,
+		refs: b.refs,
+		mx:   b.mx,
+	}
+	c := clean{
+		refs: buf.refs,
+		mx:   buf.mx,
+	}
+	runtime.AddCleanup(&buf, func(c clean) {
+		c.mx.Lock()
+		if *c.refs > 0 {
+			*c.refs--
+		}
+		c.mx.Unlock()
+	}, c)
+	return buf
 }
 
 func (b *COWBuffer) Close() {
-	// need to implement
+	b.mx.Lock()
+	if *b.refs == 0 {
+		b.mx.Unlock()
+		return
+	}
+	*b.refs--
+	b.refs = new(int)
+	b.data = nil
+	defer b.mx.Unlock()
+	b.mx = &sync.RWMutex{}
 }
 
 func (b *COWBuffer) Update(index int, value byte) bool {
-	return false // need to implement
+	b.mx.Lock()
+	unlock := b.mx.Unlock
+
+	if index < 0 || index >= len(b.data) {
+		unlock()
+		return false
+	}
+	if *b.refs > 0 {
+		*b.refs--
+		data := make([]byte, len(b.data))
+		copy(data, b.data)
+		b.data = data
+		b.refs = new(int)
+		mx := &sync.RWMutex{}
+		mx.Lock()
+		defer mx.Unlock()
+		b.mx = mx
+		c := clean{
+			refs: b.refs,
+			mx:   b.mx,
+		}
+		runtime.AddCleanup(&b, func(c clean) {
+			c.mx.Lock()
+			if *c.refs > 0 {
+				*c.refs--
+			}
+			c.mx.Unlock()
+		}, c)
+	}
+	b.data[index] = value
+	unlock()
+
+	return true
 }
 
 func (b *COWBuffer) String() string {
-	return "" // need to implement
+	b.mx.RLock()
+	defer b.mx.RUnlock()
+	if len(b.data) == 0 {
+		return ""
+	}
+	return unsafe.String(unsafe.SliceData(b.data), len(b.data))
+}
+
+type clean struct {
+	refs *int
+	mx   *sync.RWMutex
 }
 
 func TestCOWBuffer(t *testing.T) {
