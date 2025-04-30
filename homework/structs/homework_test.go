@@ -8,83 +8,133 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	// Gold: 32 бита, байт 0-3
+	goldOffset = 0
+	goldBits   = 32
+
+	// Mana: 10 бит, байт 4 (8 бит) + биты 6-7 байта 5 (2 бита)
+	manaOffset = 32
+	manaBits   = 10
+
+	// Health: 10 бит, биты 0-5 байта 5 (6 бит) + биты 4-7 байта 6 (4 бита)
+	healthOffset = 42
+	healthBits   = 10
+
+	// Respect: 4 бита, биты 4-7 байта 7
+	respectOffset = 56 + 4
+	respectBits   = 4
+
+	// Strength: 4 бита, биты 0-3 байта 7
+	strengthOffset = 56 + 0
+	strengthBits   = 4
+
+	// Experience: 4 бита, биты 4-7 байта 8
+	experienceOffset = 64 + 4
+	experienceBits   = 4
+
+	// Level: 4 бита, биты 0-3 байта 8
+	levelOffset = 64 + 0
+	levelBits   = 4
+
+	// House: 1 бит, бит 7 байта 9
+	houseOffset = 72 + 7
+	houseBits   = 1
+
+	// Gun: 1 бит, бит 6 байта 9
+	gunOffset = 72 + 6
+	gunBits   = 1
+
+	// Family: 1 бит, бит 5 байта 9
+	familyOffset = 72 + 5
+	familyBits   = 1
+
+	// Type: 2 бита, биты 3-4 байта 9
+	typeOffset = 72 + 3
+	typeBits   = 2
+)
+
 type Option func(*GamePerson)
 
 func WithName(name string) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		copy(person.name[:], name[:42])
 	}
 }
 
 func WithCoordinates(x, y, z int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		person.coords = coords{
+			x: int32(x),
+			y: int32(y),
+			z: int32(z),
+		}
 	}
 }
 
 func WithGold(gold int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(gold), goldBits, goldOffset)
 	}
 }
 
 func WithMana(mana int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(mana), manaBits, manaOffset)
 	}
 }
 
 func WithHealth(health int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(health), healthBits, healthOffset)
 	}
 }
 
 func WithRespect(respect int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(respect), respectBits, respectOffset)
 	}
 }
 
 func WithStrength(strength int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(strength), strengthBits, strengthOffset)
 	}
 }
 
 func WithExperience(experience int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(experience), experienceBits, experienceOffset)
 	}
 }
 
 func WithLevel(level int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(level), levelBits, levelOffset)
 	}
 }
 
 func WithHouse() func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], 1, houseBits, houseOffset)
 	}
 }
 
 func WithGun() func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], 1, gunBits, gunOffset)
 	}
 }
 
 func WithFamily() func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], 1, familyBits, familyOffset)
 	}
 }
 
 func WithType(personType int) func(*GamePerson) {
 	return func(person *GamePerson) {
-		// need to implement
+		setBits(person.attrs[:], uint(personType), typeBits, typeOffset)
 	}
 }
 
@@ -94,88 +144,130 @@ const (
 	WarriorGamePersonType
 )
 
+type coords struct {
+	x int32
+	y int32
+	z int32
+}
 type GamePerson struct {
-	// need to implement
+	coords coords
+	name   [42]byte
+	/*
+		golds      32bits,
+		mana       10 bits,
+		health     10 bits,
+		respect    4 bits,
+		power      4 bits,
+		experience 4 bits,
+		lvl        4 bits,
+		house      1 bits,
+		weapon     1 bits,
+		family     1 bits,
+		type       2 bits
+	*/
+	attrs [10]byte
 }
 
 func NewGamePerson(options ...Option) GamePerson {
-	// need to implement
-	return GamePerson{}
+	p := GamePerson{}
+	for _, opt := range options {
+		opt(&p)
+	}
+	return p
 }
 
 func (p *GamePerson) Name() string {
-	// need to implement
-	return ""
+	return unsafe.String(&p.name[0], 42)
 }
 
 func (p *GamePerson) X() int {
-	// need to implement
-	return 0
+	return int(p.coords.x)
 }
 
 func (p *GamePerson) Y() int {
-	// need to implement
-	return 0
+	return int(p.coords.y)
 }
 
 func (p *GamePerson) Z() int {
-	// need to implement
-	return 0
+	return int(p.coords.z)
 }
 
 func (p *GamePerson) Gold() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], goldBits, goldOffset))
 }
 
 func (p *GamePerson) Mana() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], manaBits, manaOffset))
 }
 
 func (p *GamePerson) Health() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], healthBits, healthOffset))
 }
 
 func (p *GamePerson) Respect() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], respectBits, respectOffset))
 }
 
 func (p *GamePerson) Strength() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], strengthBits, strengthOffset))
 }
 
 func (p *GamePerson) Experience() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], experienceBits, experienceOffset))
 }
 
 func (p *GamePerson) Level() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], levelBits, levelOffset))
 }
 
 func (p *GamePerson) HasHouse() bool {
-	// need to implement
-	return false
+	return getBits(p.attrs[:], houseBits, houseOffset) == 1
 }
 
 func (p *GamePerson) HasGun() bool {
-	// need to implement
-	return false
+	return getBits(p.attrs[:], gunBits, gunOffset) == 1
 }
 
 func (p *GamePerson) HasFamilty() bool {
-	// need to implement
-	return false
+	return getBits(p.attrs[:], familyBits, familyOffset) == 1
 }
 
 func (p *GamePerson) Type() int {
-	// need to implement
-	return 0
+	return int(getBits(p.attrs[:], typeBits, typeOffset))
+}
+
+func setBits(data []byte, value uint, bits, offset int) {
+	for i := 0; i < bits; i++ {
+		byteIndex := (offset + i) / 8
+		bitIndex := (offset + i) % 8
+
+		if byteIndex >= len(data) {
+			return
+		}
+
+		if (value>>i)&1 == 1 {
+			data[byteIndex] |= 1 << bitIndex
+		} else {
+			data[byteIndex] &^= 1 << bitIndex
+		}
+	}
+}
+
+func getBits(data []byte, bits, offset int) uint {
+	var result uint
+	for i := 0; i < bits; i++ {
+		byteIndex := (offset + i) / 8
+		bitIndex := (offset + i) % 8
+
+		if byteIndex >= len(data) {
+			break
+		}
+
+		if (data[byteIndex]>>bitIndex)&1 == 1 {
+			result |= 1 << i
+		}
+	}
+	return result
 }
 
 func TestGamePerson(t *testing.T) {
