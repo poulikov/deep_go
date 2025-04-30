@@ -8,18 +8,46 @@ import (
 )
 
 func Map(data []int, action func(int) int) []int {
-	// need to implement
-	return nil
+	if data == nil {
+		return nil
+	}
+	if action == nil {
+		return data
+	}
+	result := make([]int, 0, len(data))
+	for _, v := range data {
+		result = append(result, action(v))
+	}
+	return result
 }
 
 func Filter(data []int, action func(int) bool) []int {
-	// need to implement
-	return nil
+	if data == nil {
+		return nil
+	}
+	if action == nil {
+		return data
+	}
+	result := make([]int, 0)
+	for _, v := range data {
+		if action(v) {
+			result = append(result, v)
+		}
+	}
+	return result
 }
 
+// Reduce ...
+//
+// if an action is nil Reduce returns the initial value without changes
 func Reduce(data []int, initial int, action func(int, int) int) int {
-	// need to implement
-	return 0
+	if action == nil {
+		return initial
+	}
+	for _, v := range data {
+		initial = action(initial, v)
+	}
+	return initial
 }
 
 func TestMap(t *testing.T) {
