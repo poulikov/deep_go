@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,18 +11,31 @@ import (
 
 // go test -v homework_test.go
 
+// MultiError provides an obsolete way to join a few errors; much better way is using errors.Join or "%w" verb.
+//
+// Deprecated: see errors.Join or fmt.Errorf with multiple %w verbs
 type MultiError struct {
-	// need to implement
+	err []error
 }
 
 func (e *MultiError) Error() string {
-	// need to implement
-	return ""
+	if len(e.err) == 0 {
+		return "<nil>"
+	}
+	msg := make([]string, 0, len(e.err))
+	for _, emsg := range e.err {
+		msg = append(msg, emsg.Error())
+	}
+	return fmt.Sprintf("%d errors occured:\n\t* %s\n", len(e.err), strings.Join(msg, "\t* "))
 }
 
 func Append(err error, errs ...error) *MultiError {
-	// need to implement
-	return nil
+	if me, ok := err.(*MultiError); ok {
+		me.err = append(me.err, errs...)
+		return me
+	}
+	me := &MultiError{err: errs}
+	return me
 }
 
 func TestMultiError(t *testing.T) {
