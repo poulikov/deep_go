@@ -237,36 +237,43 @@ func (p *GamePerson) Type() int {
 }
 
 func setBits(data []byte, value uint, bits, offset int) {
-	for i := 0; i < bits; i++ {
-		byteIndex := (offset + i) / 8
-		bitIndex := (offset + i) % 8
+	for bits > 0 && offset < len(data)*8 {
+		byteIndex := offset / 8
+		bitIndex := offset % 8
 
-		if byteIndex >= len(data) {
-			return
-		}
+		bitsInByte := 8 - bitIndex
+		availableBits := min(bits, bitsInByte)
+		mask := byte((1 << availableBits) - 1)
 
-		if (value>>i)&1 == 1 {
-			data[byteIndex] |= 1 << bitIndex
-		} else {
-			data[byteIndex] &^= 1 << bitIndex
-		}
+		data[byteIndex] &^= mask << bitIndex
+
+		data[byteIndex] |= (byte(value) & mask) << bitIndex
+
+		value >>= availableBits
+		bits -= availableBits
+		offset += availableBits
 	}
 }
 
 func getBits(data []byte, bits, offset int) uint {
 	var result uint
-	for i := 0; i < bits; i++ {
-		byteIndex := (offset + i) / 8
-		bitIndex := (offset + i) % 8
+	shift := 0
 
-		if byteIndex >= len(data) {
-			break
-		}
+	for bits > 0 && offset < len(data)*8 {
+		byteIndex := offset / 8
+		bitIndex := offset % 8
 
-		if (data[byteIndex]>>bitIndex)&1 == 1 {
-			result |= 1 << i
-		}
+		availableBits := min(bits, 8-bitIndex)
+		mask := byte((1 << availableBits) - 1)
+
+		value := (data[byteIndex] >> bitIndex) & mask
+		result |= uint(value) << shift
+
+		shift += availableBits
+		bits -= availableBits
+		offset += availableBits
 	}
+
 	return result
 }
 
