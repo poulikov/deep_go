@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,35 +14,44 @@ type UserService struct {
 	// not need to implement
 	NotEmptyStruct bool
 }
+
 type MessageService struct {
 	// not need to implement
 	NotEmptyStruct bool
 }
 
 type Container struct {
-	// need to implement
+	mx    sync.RWMutex
+	ctors map[string]func() any
 }
 
 func NewContainer() *Container {
-	// need to implement
-	return &Container{}
+	return &Container{
+		ctors: make(map[string]func() any),
+	}
 }
 
-func (c *Container) RegisterType(name string, constructor interface{}) {
-	// need to implement
+func (c *Container) RegisterType(name string, constructor func() any) {
+	c.mx.Lock()
+	defer c.mx.Unlock()
+	c.ctors[name] = constructor
 }
 
-func (c *Container) Resolve(name string) (interface{}, error) {
-	// need to implement
-	return nil, nil
+func (c *Container) Resolve(name string) (any, error) {
+	c.mx.RLock()
+	defer c.mx.RUnlock()
+	if ctor, ok := c.ctors[name]; ok {
+		return ctor(), nil
+	}
+	return nil, fmt.Errorf(`constructor for type "%s" is not registered`, name)
 }
 
 func TestDIContainer(t *testing.T) {
 	container := NewContainer()
-	container.RegisterType("UserService", func() interface{} {
+	container.RegisterType("UserService", func() any {
 		return &UserService{}
 	})
-	container.RegisterType("MessageService", func() interface{} {
+	container.RegisterType("MessageService", func() any {
 		return &MessageService{}
 	})
 
