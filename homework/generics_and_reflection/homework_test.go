@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -20,11 +21,14 @@ type Person struct {
 }
 
 func Serialize(object any) string {
-	t := reflect.TypeOf(object)
+	return serialize(reflect.ValueOf(object))
+}
+
+func serialize(val reflect.Value) string {
+	t := val.Type()
 	if t.Kind() != reflect.Struct {
 		return ""
 	}
-	v := reflect.ValueOf(object)
 	serialized := make([]string, 0, t.NumField())
 	for i := range t.NumField() {
 		fldType := t.Field(i)
@@ -36,8 +40,8 @@ func Serialize(object any) string {
 		if len(props) == 2 && strings.ToLower(strings.TrimSpace(props[1])) == "omitempty" {
 			omitempty = true
 		}
-		fldVal := v.Field(i)
-		if omitempty && (fldVal.IsZero() || (t.Kind() == reflect.Ptr && fldVal.IsNil())) {
+		fldVal := val.Field(i)
+		if omitempty && fldVal.IsZero() {
 			continue
 		}
 
@@ -49,31 +53,19 @@ func Serialize(object any) string {
 func valueToString(fldVal reflect.Value) string {
 	var value string
 	switch k := fldVal.Kind(); k {
+	case reflect.Invalid:
+		return "<invalid>"
 	case reflect.Slice, reflect.Array:
 		vals := make([]string, 0, fldVal.Len())
 		for y := range fldVal.Len() {
-			switch fldVal.Index(y).Kind() {
-			case reflect.Array, reflect.Slice:
-				vals = append(vals, valueToString(fldVal.Index(y)))
-			case reflect.Map:
-				vals = append(vals, valueToString(fldVal.Index(y)))
-			default:
-				vals = append(vals, fmt.Sprintf("%v", fldVal.Index(y)))
-			}
+			vals = append(vals, valueToString(fldVal.Index(y)))
 		}
 		value = strings.Join(vals, ",")
 	case reflect.Map:
 		vals := make([]string, 0, fldVal.Len())
 		iter := fldVal.MapRange()
 		for iter.Next() {
-			switch iter.Value().Kind() {
-			case reflect.Array, reflect.Slice:
-				vals = append(vals, fmt.Sprintf("%v:%v", iter.Key(), valueToString(iter.Value())))
-			case reflect.Map:
-				vals = append(vals, fmt.Sprintf("%v:%v", iter.Key(), valueToString(iter.Value())))
-			default:
-				vals = append(vals, fmt.Sprintf("%v:%v", iter.Key(), iter.Value()))
-			}
+			vals = append(vals, fmt.Sprintf("%v:%v", iter.Key(), iter.Value()))
 		}
 		slices.Sort(vals)
 		value = strings.Join(vals, ",")
@@ -90,7 +82,7 @@ func valueToString(fldVal reflect.Value) string {
 			value = valueToString(fldVal.Elem())
 		}
 	case reflect.Struct:
-		value = fmt.Sprintf("<%s>", fldVal.Type().Name())
+		value = fmt.Sprintf("[\n%s\n]", serialize(fldVal))
 	default:
 		value = fmt.Sprintf("%v", fldVal)
 	}
@@ -157,7 +149,8 @@ func TestSerialization(t *testing.T) {
 
 func TestSerializationAggTypes(t *testing.T) {
 	type Details struct {
-		NonEmpty bool `properties:"non-empty"`
+		Description string `properties:"desc"`
+		Salary      int    `properties:"salary"`
 	}
 	type Person2 struct {
 		Name    string         `properties:"name"`
@@ -169,6 +162,7 @@ func TestSerializationAggTypes(t *testing.T) {
 		Upgrade func()         `properties:"upgrade"`
 		Funcs   []func()       `properties:"funcs"`
 		Details *Details       `properties:"details,omitempty"`
+		Error   error          `properties:"error,omitempty"`
 	}
 
 	tests := map[string]struct {
@@ -214,9 +208,20 @@ func TestSerializationAggTypes(t *testing.T) {
 				Married: true,
 				Address: "Paris",
 				Scores:  map[string]int{"code": 100, "theory": 75},
-				Details: &Details{},
+				Details: &Details{Description: "description", Salary: 100},
 			},
-			result: "name=John Doe\naddress=Paris\nage=30\nmarried=true\ntags=\nscores=code:100,theory:75\nupgrade=<nil>\nfuncs=\ndetails=<Details>",
+			result: "name=John Doe\naddress=Paris\nage=30\nmarried=true\ntags=\nscores=code:100,theory:75\nupgrade=<nil>\nfuncs=\ndetails=[\ndesc=description\nsalary=100\n]",
+		},
+		"test case with interface field": {
+			person: Person2{
+				Name:    "John Doe",
+				Age:     30,
+				Married: true,
+				Address: "Paris",
+				Scores:  map[string]int{"code": 100, "theory": 75},
+				Error:   errors.New("error message"),
+			},
+			result: "name=John Doe\naddress=Paris\nage=30\nmarried=true\ntags=\nscores=code:100,theory:75\nupgrade=<nil>\nfuncs=\nerror=error message",
 		},
 	}
 
