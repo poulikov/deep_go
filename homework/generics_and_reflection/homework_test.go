@@ -19,12 +19,12 @@ type Person struct {
 	Married bool   `properties:"married"`
 }
 
-func Serialize[T any](person T) string {
-	t := reflect.TypeOf(person)
+func Serialize(object any) string {
+	t := reflect.TypeOf(object)
 	if t.Kind() != reflect.Struct {
 		return ""
 	}
-	v := reflect.ValueOf(person)
+	v := reflect.ValueOf(object)
 	serialized := make([]string, 0, t.NumField())
 	for i := range t.NumField() {
 		fldType := t.Field(i)
@@ -171,8 +171,6 @@ func TestSerializationAggTypes(t *testing.T) {
 		Details *Details       `properties:"details,omitempty"`
 	}
 
-	serializePerson2 := Serialize[Person2]
-
 	tests := map[string]struct {
 		person Person2
 		result string
@@ -224,7 +222,7 @@ func TestSerializationAggTypes(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			result := serializePerson2(test.person)
+			result := Serialize(test.person)
 			assert.Equal(t, test.result, result)
 		})
 	}
